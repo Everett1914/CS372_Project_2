@@ -11,9 +11,12 @@
 #include <arpa/inet.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <dirent.h>
 
 #define BACKLOG 1
 #define MAXDATASIZE 500
+#define CMDSTRSIZE 100
+#define PARAMS 3  //Number of command arguements received from client <cmd> <dataport> <hostname>
 
 int createBindSocket(int sockfd, struct addrinfo *servinfo, int yes){
   //Step2: Create Socket
@@ -34,7 +37,6 @@ int createBindSocket(int sockfd, struct addrinfo *servinfo, int yes){
     perror("server: bind");
     exit(1);
   }
-
   return sockfd;
 }
 
@@ -44,19 +46,82 @@ void listen4Connection(int sockfd, char *port){
     perror("listen");
     exit(1);
   }
-
   printf("Server open on %s\n", port);
 }
 
+void printConnectionInfo(char commandStr[PARAMS][CMDSTRSIZE]){
+  if(strcmp(commandStr[1], "-l") == 0){
+    printf("Connection from %s.\n", commandStr[0]);
+    printf("List directory requested on port %s.\n", commandStr[2]);
+    printf("Sending directory contents to %s: %s\n", commandStr[0], commandStr[2]);
+  }
+  else{
+  }
+}
+
+int openDataConnection(char commandStr[PARAMS][CMDSTRSIZE]){
+  int rv, sock_fd, numbytes1;
+  char test[] = "test";
+  struct addrinfo hints1, *result1;
+  memset(&hints1, 0, sizeof hints1);
+  hints1.ai_family = AF_INET;  //Use IPv4
+  hints1.ai_socktype = SOCK_STREAM;
+  if ((rv = getaddrinfo(commandStr[0], commandStr[2], &hints1, &result1)) != 0) {
+      fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+      return 1;
+  }
+  //Create the socket, if error creating socket exit
+  if ((sock_fd = socket(result1->ai_family, result1->ai_socktype, result1->ai_protocol)) == -1){
+    perror("Socket Creation Error: ");
+  }
+  //Create the connection, if error creating connection exit
+  if (connect(sock_fd, result1->ai_addr, result1->ai_addrlen) == -1) {
+    close(sock_fd);
+    perror("Connection Creation Error: ");
+  }
+  return sock_fd;
+}
+
+//https://www.geeksforgeeks.org/c-program-list-files-sub-directories-directory/
+int getDirectory(){
+  struct dirent *de;  // Pointer for directory entry
+  DIR *dr = opendir(".");  // opendir() returns a pointer of DIR type.
+  if (dr == NULL){  // opendir returns NULL if couldn't open directory
+    printf("Could not open current directory" );
+    return 0;
+  }
+  while ((de = readdir(dr)) != NULL){
+    if (strcmp(de->d_name,".") != 0 && strcmp(de->d_name,"..") != 0){
+      printf("%s\n", de->d_name);
+    }
+  }
+  closedir(dr);
+  return 0;
+}
+
+void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE]){
+  int numbytes0;
+  char test[] = "test";
+  if(strcmp(commandStr[1], "-l") == 0){
+    getDirectory();
+    if ((numbytes0 = send(sock_fd, test, strlen(test), 0)) == -1) {
+      perror("send: ");
+      exit(1);
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
-  int sockfd, new_fd;  // listen on sockfd, new connection on new_fd
+  int sockfd, new_fd, sock_fd;  // listen on sockfd, new connection on new_fd
   char buf[MAXDATASIZE];
   struct addrinfo hints, *servinfo;
   struct sockaddr_storage their_addr; // connector's address information
   socklen_t sin_size;
   struct sigaction sa;
+  char commandStr[PARAMS][CMDSTRSIZE];
+  char* token;
+  char* rest;
   int yes = 1;
-  //char s[INET6_ADDRSTRLEN];
   int rv, numbytes;
 
   memset(&hints, 0, sizeof hints);
@@ -88,11 +153,17 @@ int main(int argc, char *argv[]) {
       perror("recv");
       exit(1);
     }
-
-
     buf[numbytes] = '\0';
-    printf("Received '%s'\n",buf);
+    rest = buf;
+    int i = 0;
+    while ((token = strtok_r(rest, " ", &rest))){
+      memset(commandStr[i], '\0', sizeof(commandStr[i]));
+      strcpy(commandStr[i], token);
+      i++;
+    }
+    printConnectionInfo(commandStr);
+    sock_fd = openDataConnection(commandStr);
+    handleRequest(sock_fd, commandStr);
   }
-
   return 0;
 }

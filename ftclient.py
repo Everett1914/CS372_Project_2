@@ -4,6 +4,7 @@ import sys
 
 def openDataConnection(dPrt):
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serverSocket.bind(('', dPrt))
     serverSocket.listen(1)
     connection, addr = serverSocket.accept()
@@ -11,9 +12,10 @@ def openDataConnection(dPrt):
 
 
 def receiveDirData(dPrt):
-    print 'Recieving Directory Structure from ' + sys.argv[1] + ' ' + sys.argv[2]
+    print 'Receiving Directory Structure from ' + sys.argv[1] + ' ' + sys.argv[2]
     dataConnection = openDataConnection(dPrt)
     message = dataConnection.recv(2048)
+    print message
     return 0
 
 def makeRequest(clientSocket):
@@ -21,12 +23,16 @@ def makeRequest(clientSocket):
         message = sys.argv[1] + ' ' +sys.argv[3] + ' ' + sys.argv[4]
         clientSocket.send(message.encode())
         dataPort = int(sys.argv[4])
-        receiveDirData(dataPort);
-    elif sys.argv[3] == '-g':
+        receiveDirData(dataPort)
+        clientSocket.shutdown(1)
+        clientSocket.close()
+    elif sys.argv[3] == '-p':
         message = sys.argv[1] + ' ' +sys.argv[3] + ' ' + sys.argv[5]
         dataPort = int(sys.argv[5])
-        receiveFileData();
+        receiveFileData()
         clientSocket.send(message.encode())
+        clientSocket.shutdown(1)
+        clientSocket.close()
     return 0
 
 def establishConnection(host, controlPort):
