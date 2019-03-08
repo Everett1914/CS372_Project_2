@@ -15,6 +15,7 @@
 
 #define BACKLOG 1
 #define MAXDATASIZE 500
+#define MAXFILENAMELENGTH 10000
 #define CMDSTRSIZE 100
 #define PARAMS 3  //Number of command arguements received from client <cmd> <dataport> <hostname>
 
@@ -61,7 +62,6 @@ void printConnectionInfo(char commandStr[PARAMS][CMDSTRSIZE]){
 
 int openDataConnection(char commandStr[PARAMS][CMDSTRSIZE]){
   int rv, sock_fd, numbytes1;
-  char test[] = "test";
   struct addrinfo hints1, *result1;
   memset(&hints1, 0, sizeof hints1);
   hints1.ai_family = AF_INET;  //Use IPv4
@@ -83,16 +83,17 @@ int openDataConnection(char commandStr[PARAMS][CMDSTRSIZE]){
 }
 
 //https://www.geeksforgeeks.org/c-program-list-files-sub-directories-directory/
-int getDirectory(){
+int getDirectory(char* fileList){
   struct dirent *de;  // Pointer for directory entry
   DIR *dr = opendir(".");  // opendir() returns a pointer of DIR type.
   if (dr == NULL){  // opendir returns NULL if couldn't open directory
     printf("Could not open current directory" );
-    return 0;
+    return 1;
   }
   while ((de = readdir(dr)) != NULL){
     if (strcmp(de->d_name,".") != 0 && strcmp(de->d_name,"..") != 0){
-      printf("%s\n", de->d_name);
+      strcat(fileList, de->d_name);
+      strcat(fileList, "\n");
     }
   }
   closedir(dr);
@@ -101,14 +102,17 @@ int getDirectory(){
 
 void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE]){
   int numbytes0;
-  char test[] = "test";
+  char fileList[MAXFILENAMELENGTH];
+  memset(fileList, '\0', sizeof(fileList));
+  getDirectory(fileList);
   if(strcmp(commandStr[1], "-l") == 0){
-    getDirectory();
-    if ((numbytes0 = send(sock_fd, test, strlen(test), 0)) == -1) {
+    if ((numbytes0 = send(sock_fd, fileList, strlen(fileList), 0)) == -1) {
+      send(sock_fd, fileList, strlen(fileList), 0);
       perror("send: ");
       exit(1);
     }
   }
+  close(sock_fd);
 }
 
 int main(int argc, char *argv[]) {

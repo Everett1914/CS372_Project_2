@@ -2,19 +2,20 @@
 import socket
 import sys
 
+#Helper
 def openDataConnection(dPrt):
     serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     serverSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     serverSocket.bind(('', dPrt))
-    serverSocket.listen(1)
+    serverSocket.listen(10)
     connection, addr = serverSocket.accept()
-    return connection
+    return connection, serverSocket
 
-
+#Helper
 def receiveDirData(dPrt):
-    print 'Receiving Directory Structure from ' + sys.argv[1] + ' ' + sys.argv[2]
-    dataConnection = openDataConnection(dPrt)
-    message = dataConnection.recv(2048)
+    print 'Receiving Directory Structure from ' + sys.argv[1] + ':  ' + sys.argv[2]
+    dataConnection, serverSocket = openDataConnection(dPrt)
+    message = dataConnection.recv(1024)
     print message
     return 0
 
