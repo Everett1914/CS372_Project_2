@@ -21,7 +21,7 @@ def receiveDirData(dPrt):
 
 def makeRequest(clientSocket):
     if sys.argv[3] == '-l':
-        message = sys.argv[1] + ' ' +sys.argv[3] + ' ' + sys.argv[4]
+        message = socket.getfqdn() + ' ' +sys.argv[3] + ' ' + sys.argv[4]
         clientSocket.send(message.encode())
         dataPort = int(sys.argv[4])
         receiveDirData(dataPort)
@@ -44,7 +44,7 @@ def establishConnection(host, controlPort):
 if __name__ == "__main__":
 
     if len(sys.argv) < 5 or len(sys.argv) > 6:
-        print "Arguement count is incorrect.  Arguement count is incorrect.  Must enter: ./ftclient <host> <controlport#> <cmd> <dataport#>"
+        print "Arguement count is incorrect.  Arguement count is incorrect.  Must enter: python <ftclient.py> <host> <controlport#> <cmd> <dataport#>"
         exit(1)
 
     host = sys.argv[1]

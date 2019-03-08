@@ -51,8 +51,11 @@ void listen4Connection(int sockfd, char *port){
 }
 
 void printConnectionInfo(char commandStr[PARAMS][CMDSTRSIZE]){
+  char flip[6];
+  memset(flip, '\0', sizeof(flip));
+  strncpy(flip, commandStr[0], 5);
   if(strcmp(commandStr[1], "-l") == 0){
-    printf("Connection from %s.\n", commandStr[0]);
+    printf("Connection from %s.\n", flip);
     printf("List directory requested on port %s.\n", commandStr[2]);
     printf("Sending directory contents to %s: %s\n", commandStr[0], commandStr[2]);
   }
@@ -131,6 +134,7 @@ int main(int argc, char *argv[]) {
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_INET;  //Use IPv4
   hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
 
   if(argc != 2){
     fprintf(stderr, "Arguement count is incorrect.  Must enter: ./ftserver <portnumber>\n");
