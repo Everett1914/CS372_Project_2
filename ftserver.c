@@ -61,6 +61,9 @@ void printConnectionInfo(char commandStr[PARAMS][CMDSTRSIZE]){
     printf("Sending directory contents to %s: %s\n", commandStr[0], commandStr[2]);
   }
   else{
+    printf("Connection from %s.\n", flip);
+    printf("File %s requested on port %s.\n", commandStr[2], commandStr[3]);
+    printf("Sending %s to %s: %s\n", commandStr[2], flip, commandStr[3]);
   }
 }
 
@@ -164,7 +167,7 @@ void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE]){
     int len = strlen(source);
     int bytesleft = len; // how many we have left to send
     int n;
-    while(total < len) {
+    while(total < len){
         n = send(sock_fd, source + total, bytesleft, 0);
         if (n == -1){
           perror("sendall");
@@ -175,8 +178,8 @@ void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE]){
         bytesleft -= n;
     }
     memset(source, '\0', sizeof(source));
-    strcpy(source, "%_");
-    send(sock_fd, source, sizeof(source),0);
+    strcpy(source, "<<stop>>");
+    send(sock_fd, "<<stop>>", sizeof(source),0);
     fclose(fp);
   }
   close(sock_fd);

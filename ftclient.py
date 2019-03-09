@@ -1,6 +1,7 @@
 # client program
 import socket
 import sys
+import os
 
 #Helper
 def openDataConnection(dPrt):
@@ -20,12 +21,15 @@ def receiveDirData(dPrt):
     return 0
 
 def receiveFileData(dPrt):
-    print 'Receiving ' + sys.argv[4] + ' from ' + sys.argv[1] + ':  ' + sys.argv[5]
+    print 'Receiving ' + 'new.txt' + ' from ' + sys.argv[1] + ':  ' + sys.argv[5]
     dataConnection, serverSocket = openDataConnection(dPrt)
     buffer = dataConnection.recv(1024)
-    while "%_" not in buffer:
+    f = open("new.txt", "w")
+    f.write(buffer)
+    while "<<stop>>" not in buffer:
         buffer = dataConnection.recv(1024)
-        print buffer
+        f.write(buffer)
+    f.close()
     return 0
 
 def makeRequest(clientSocket):
@@ -34,15 +38,13 @@ def makeRequest(clientSocket):
         clientSocket.send(message.encode())
         dataPort = int(sys.argv[4])
         receiveDirData(dataPort)
-        clientSocket.shutdown(1)
-        clientSocket.close()
     elif sys.argv[3] == '-g':
         message = socket.getfqdn() + ' ' +sys.argv[3] + ' ' + sys.argv[4] + ' ' + sys.argv[5]
         clientSocket.send(message.encode())
         dataPort = int(sys.argv[5])
         receiveFileData(dataPort)
-        clientSocket.shutdown(1)
-        clientSocket.close()
+    clientSocket.shutdown(1)
+    clientSocket.close()
     return 0
 
 def establishConnection(host, controlPort):
