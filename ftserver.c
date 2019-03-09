@@ -14,10 +14,11 @@
 #include <dirent.h>
 
 #define BACKLOG 1
+#define BLENGTH 1024
 #define MAXDATASIZE 500
-#define MAXFILENAMELENGTH 10000
+#define MAXFILENAMELENGTH 100
 #define CMDSTRSIZE 100
-#define PARAMS 3  //Number of command arguements received from client <cmd> <dataport> <hostname>
+#define PARAMS 4  //Number of command arguements received from client <cmd> <dataport> <hostname>
 
 int createBindSocket(int sockfd, struct addrinfo *servinfo, int yes){
   //Step2: Create Socket
@@ -69,9 +70,17 @@ int openDataConnection(char commandStr[PARAMS][CMDSTRSIZE]){
   memset(&hints1, 0, sizeof hints1);
   hints1.ai_family = AF_INET;  //Use IPv4
   hints1.ai_socktype = SOCK_STREAM;
-  if ((rv = getaddrinfo(commandStr[0], commandStr[2], &hints1, &result1)) != 0) {
-      fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-      return 1;
+  if(strcmp(commandStr[1], "-l") == 0){
+    if ((rv = getaddrinfo(commandStr[0], commandStr[2], &hints1, &result1)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
+  }
+  else if(strcmp(commandStr[1], "-g") == 0){
+    if ((rv = getaddrinfo(commandStr[0], commandStr[3], &hints1, &result1)) != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
+        return 1;
+    }
   }
   //Create the socket, if error creating socket exit
   if ((sock_fd = socket(result1->ai_family, result1->ai_socktype, result1->ai_protocol)) == -1){
@@ -103,17 +112,72 @@ int getDirectory(char* fileList){
   return 0;
 }
 
+//ftp://ftp.cs.umass.edu/pub/net/pub/kurose/ftpserver.c
+//https://beej.us/guide/bgnet/html/multi/advanced.html#sendall
+//https://stackoverflow.com/questions/2029103/correct-way-to-read-a-text-file-into-a-buffer-in-c
 void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE]){
   int numbytes0;
-  char fileList[MAXFILENAMELENGTH];
-  memset(fileList, '\0', sizeof(fileList));
-  getDirectory(fileList);
   if(strcmp(commandStr[1], "-l") == 0){
+    char fileList[MAXFILENAMELENGTH];
+    memset(fileList, '\0', sizeof(fileList));
+    getDirectory(fileList);
     if ((numbytes0 = send(sock_fd, fileList, strlen(fileList), 0)) == -1) {
-      send(sock_fd, fileList, strlen(fileList), 0);
       perror("send: ");
       exit(1);
     }
+  }
+  else if(strcmp(commandStr[1], "-g") == 0){
+    FILE *fp;
+    char *source = NULL;
+    char ch;
+    fp = fopen(commandStr[2] , "r");
+    if(fp == NULL){
+      printf("Error Opening file\n");
+      exit(1);
+    }
+    if (fp != NULL) {
+      if (fseek(fp, 0L, SEEK_END) == 0) {
+          long bufSize = ftell(fp);
+          if (bufSize == -1) {
+              perror("Invalid file");
+              exit(1);
+          }
+          /* Allocate our buffer to that size. */
+          source = malloc(sizeof(char) * (bufSize + 1));
+
+          /* Go back to the start of the file. */
+          if (fseek(fp, 0L, SEEK_SET) != 0) {
+              perror("Unable to read file");
+          }
+
+          /* Read the entire file into memory. */
+          size_t newLen = fread(source, sizeof(char), bufSize, fp);
+          if ( ferror( fp ) != 0 ) {
+              fputs("Error reading file", stderr);
+          }
+          else {
+              source[newLen++] = '\0'; /* Just to be safe. */
+          }
+      }
+    }
+    int total = 0;        // how many bytes we've sent
+    int len = strlen(source);
+    int bytesleft = len; // how many we have left to send
+    int n;
+    while(total < len) {
+        n = send(sock_fd, source + total, bytesleft, 0);
+        if (n == -1){
+          perror("sendall");
+          printf("We only sent %d bytes because of the error!\n", len);
+          break;
+        }
+        total += n;
+        bytesleft -= n;
+    }
+    memset(source, '\0', sizeof(source));
+    strcpy(source, "%_");
+    send(sock_fd, source, sizeof(source),0);
+    fclose(fp);
   }
   close(sock_fd);
 }

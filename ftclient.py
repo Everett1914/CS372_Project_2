@@ -13,10 +13,19 @@ def openDataConnection(dPrt):
 
 #Helper
 def receiveDirData(dPrt):
-    print 'Receiving Directory Structure from ' + sys.argv[1] + ':  ' + sys.argv[2]
+    print 'Receiving Directory Structure from ' + sys.argv[1] + ':  ' + sys.argv[4]
     dataConnection, serverSocket = openDataConnection(dPrt)
     message = dataConnection.recv(1024)
     print message
+    return 0
+
+def receiveFileData(dPrt):
+    print 'Receiving ' + sys.argv[4] + ' from ' + sys.argv[1] + ':  ' + sys.argv[5]
+    dataConnection, serverSocket = openDataConnection(dPrt)
+    buffer = dataConnection.recv(1024)
+    while "%_" not in buffer:
+        buffer = dataConnection.recv(1024)
+        print buffer
     return 0
 
 def makeRequest(clientSocket):
@@ -27,11 +36,11 @@ def makeRequest(clientSocket):
         receiveDirData(dataPort)
         clientSocket.shutdown(1)
         clientSocket.close()
-    elif sys.argv[3] == '-p':
-        message = sys.argv[1] + ' ' +sys.argv[3] + ' ' + sys.argv[5]
-        dataPort = int(sys.argv[5])
-        receiveFileData()
+    elif sys.argv[3] == '-g':
+        message = socket.getfqdn() + ' ' +sys.argv[3] + ' ' + sys.argv[4] + ' ' + sys.argv[5]
         clientSocket.send(message.encode())
+        dataPort = int(sys.argv[5])
+        receiveFileData(dataPort)
         clientSocket.shutdown(1)
         clientSocket.close()
     return 0
