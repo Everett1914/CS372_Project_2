@@ -21,10 +21,14 @@ def receiveDirData(dPrt):
     return 0
 
 def receiveFileData(dPrt):
-    print 'Receiving ' + 'new.txt' + ' from ' + sys.argv[1] + ':  ' + sys.argv[5]
+    print 'Receiving ' + sys.argv[4] + ' from ' + sys.argv[1] + ':  ' + sys.argv[5]
     dataConnection, serverSocket = openDataConnection(dPrt)
     buffer = dataConnection.recv(1024)
-    f = open("new.txt", "w")
+    filename = sys.argv[4]
+    if os.path.isfile(sys.argv[4]):
+        filename = "temp.txt"
+        print sys.argv[4] + " is a duplicate file.  Contents for this file will be placed in a temporary file called temp.txt"
+    f = open(filename, "w")
     f.write(buffer)
     while "<<stop>>" not in buffer:
         buffer = dataConnection.recv(1024)
@@ -41,8 +45,12 @@ def makeRequest(clientSocket):
     elif sys.argv[3] == '-g':
         message = socket.getfqdn() + ' ' +sys.argv[3] + ' ' + sys.argv[4] + ' ' + sys.argv[5]
         clientSocket.send(message.encode())
-        dataPort = int(sys.argv[5])
-        receiveFileData(dataPort)
+        response = clientSocket.recv(1024)
+        if response == "FILE NOT FOUND":
+            print response
+        else:
+            dataPort = int(sys.argv[5])
+            receiveFileData(dataPort)
     clientSocket.shutdown(1)
     clientSocket.close()
     return 0

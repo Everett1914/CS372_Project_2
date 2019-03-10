@@ -115,10 +115,30 @@ int getDirectory(char* fileList){
   return 0;
 }
 
+//https://www.geeksforgeeks.org/c-program-list-files-sub-directories-directory/
+int validateFileName(char commandStr[PARAMS][CMDSTRSIZE]){
+  int flag1 = 1;
+  if(strcmp(commandStr[1], "-g") == 0){
+    struct dirent *de;  // Pointer for directory entry
+    DIR *dr = opendir(".");  // opendir() returns a pointer of DIR type.
+    if (dr == NULL){  // opendir returns NULL if couldn't open directory
+      printf("Could not open current directory" );
+      return 2;
+    }
+    while ((de = readdir(dr)) != NULL){
+        if(strcmp(commandStr[2], de->d_name) == 0){
+          flag1 = 0;
+        }
+    }
+    closedir(dr);
+  }
+  return flag1;
+}
+
 //ftp://ftp.cs.umass.edu/pub/net/pub/kurose/ftpserver.c
 //https://beej.us/guide/bgnet/html/multi/advanced.html#sendall
 //https://stackoverflow.com/questions/2029103/correct-way-to-read-a-text-file-into-a-buffer-in-c
-void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE]){
+void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE], int new_fd){
   int numbytes0;
   if(strcmp(commandStr[1], "-l") == 0){
     char fileList[MAXFILENAMELENGTH];
@@ -188,6 +208,7 @@ void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE]){
 int main(int argc, char *argv[]) {
   int sockfd, new_fd, sock_fd;  // listen on sockfd, new connection on new_fd
   char buf[MAXDATASIZE];
+  char check[] = "check";
   struct addrinfo hints, *servinfo;
   struct sockaddr_storage their_addr; // connector's address information
   socklen_t sin_size;
@@ -196,7 +217,7 @@ int main(int argc, char *argv[]) {
   char* token;
   char* rest;
   int yes = 1;
-  int rv, numbytes;
+  int rv, numbytes, nb;
 
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_INET;  //Use IPv4
@@ -211,7 +232,7 @@ int main(int argc, char *argv[]) {
   //Step1: Create pointer (servinfo) to linked list containing address info
   if ((rv = getaddrinfo(NULL, argv[1], &hints, &servinfo)) != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
-    return 1;
+    exit(1);
   }
   //Step 2-3:  Create Socket and bind to port
   sockfd = createBindSocket(sockfd, servinfo, yes);
@@ -236,9 +257,36 @@ int main(int argc, char *argv[]) {
       strcpy(commandStr[i], token);
       i++;
     }
-    printConnectionInfo(commandStr);
-    sock_fd = openDataConnection(commandStr);
-    handleRequest(sock_fd, commandStr);
+    if(strcmp(commandStr[1], "-g") == 0){
+      if(validateFileName(commandStr) == 1){
+        //char fileValMsg[] = "FILE NOT FOUND";
+        char* fileValMsg = "FILE NOT FOUND";
+        //memset(fileValMsg, '\0', sizeof(fileValMsg));
+        //strcpy(fileValMsg, "FILE NOT FOUND");
+        if(nb = send(new_fd, fileValMsg, strlen(fileValMsg), 0) == -1){
+          perror("send from validation: ");
+          exit(1);
+        }
+      }
+      else{
+        if(nb = send(new_fd, check, sizeof(check), 0) == -1){
+          perror("send check: ");
+          exit(1);
+        }
+        printConnectionInfo(commandStr);
+        sock_fd = openDataConnection(commandStr);  //connect to data connection
+        handleRequest(sock_fd, commandStr, new_fd);
+      }
+    }
+    else{
+      if(nb = send(new_fd, check, sizeof(check), 0) == -1){
+        perror("send check: ");
+        exit(1);
+      }
+      printConnectionInfo(commandStr);
+      sock_fd = openDataConnection(commandStr);  //connect to data connection
+      handleRequest(sock_fd, commandStr, new_fd);
+    }
   }
   return 0;
 }
