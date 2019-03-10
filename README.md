@@ -7,7 +7,7 @@ To Compile:
 gcc -o ftserver ftserver.c
 
 To run the servers:
-./ftserver <port
+./ftserver <port>
 
 --------------------------------------------------------------------------------
 Running python.py
