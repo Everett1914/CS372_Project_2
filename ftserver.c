@@ -1,4 +1,16 @@
-
+/*******************************************************************************
+* Developer:  Everett Williams
+* Last Modified:  102200MAR19 (Day/Time/Month/Year)
+* Program Name: ftserver.c
+* Assignment:  CS372 Project 2
+* Description:  Server implementation for a ftp system using TCP.
+* This program represents the server side coding.
+* client server architecture.
+* References:
+*  //ftp://ftp.cs.umass.edu/pub/net/pub/kurose/ftpserver.c
+*  https://beej.us/guide/bgnet/html/multi/advanced.html#sendall
+*  https://stackoverflow.com/questions/2029103/correct-way-to-read-a-text-file-into-a-buffer-in-c
+*******************************************************************************/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -20,6 +32,13 @@
 #define CMDSTRSIZE 100
 #define PARAMS 4  //Number of command arguements received from client <cmd> <dataport> <hostname>
 
+
+/*******************************************************************************
+* Name: createBindSocket(int sockfd, struct addrinfo *servinfo, int yes)
+* Desc: Creates socket and pinds to port.
+* Args: The address info linked list
+* Return: The socket file descriptor
+*******************************************************************************/
 int createBindSocket(int sockfd, struct addrinfo *servinfo, int yes){
   //Step2: Create Socket
   if ((sockfd = socket(servinfo->ai_family, servinfo->ai_socktype,servinfo->ai_protocol)) == -1) {
@@ -42,6 +61,12 @@ int createBindSocket(int sockfd, struct addrinfo *servinfo, int yes){
   return sockfd;
 }
 
+/*******************************************************************************
+* Name: listen4Connection(int sockfd, char *port)
+* Desc: Starts listening on control connection
+* Args: Socket and port
+* Return: nothing
+*******************************************************************************/
 void listen4Connection(int sockfd, char *port){
   //Step4: Listen on port for incoming connections
   if (listen(sockfd, BACKLOG) == -1) {
@@ -51,6 +76,12 @@ void listen4Connection(int sockfd, char *port){
   printf("Server open on %s\n", port);
 }
 
+/*******************************************************************************
+* Name: printConnectionInfo(char commandStr[PARAMS][CMDSTRSIZE])
+* Desc: Prints intializing connection info
+* Args: Command data recieved from client
+* Return: nothing
+*******************************************************************************/
 void printConnectionInfo(char commandStr[PARAMS][CMDSTRSIZE]){
   char flip[6];
   memset(flip, '\0', sizeof(flip));
@@ -67,6 +98,12 @@ void printConnectionInfo(char commandStr[PARAMS][CMDSTRSIZE]){
   }
 }
 
+/*******************************************************************************
+* Name: openDataConnection(char commandStr[PARAMS][CMDSTRSIZE])
+* Desc: Connects to dataport connection created by client
+* Args: Command data recieved from client
+* Return: socket for data connection
+*******************************************************************************/
 int openDataConnection(char commandStr[PARAMS][CMDSTRSIZE]){
   int rv, sock_fd, numbytes1;
   struct addrinfo hints1, *result1;
@@ -97,7 +134,13 @@ int openDataConnection(char commandStr[PARAMS][CMDSTRSIZE]){
   return sock_fd;
 }
 
-//https://www.geeksforgeeks.org/c-program-list-files-sub-directories-directory/
+/*******************************************************************************
+* Name: getDirectory(char* fileList)
+* Desc: Gets the the servers filelist
+* Args: fileList string
+* Return: array by reference containing a string of files
+* Reference: https://www.geeksforgeeks.org/c-program-list-files-sub-directories-directory
+*******************************************************************************/
 int getDirectory(char* fileList){
   struct dirent *de;  // Pointer for directory entry
   DIR *dr = opendir(".");  // opendir() returns a pointer of DIR type.
@@ -115,7 +158,13 @@ int getDirectory(char* fileList){
   return 0;
 }
 
-//https://www.geeksforgeeks.org/c-program-list-files-sub-directories-directory/
+/*******************************************************************************
+* Name: validateFileName(char commandStr[PARAMS][CMDSTRSIZE])
+* Desc: determines if file is a duplicate
+* Args: commands sent from client with requested file name
+* Return: flag: 1 = not in directory 0 = is in directory
+* Reference: https://www.geeksforgeeks.org/c-program-list-files-sub-directories-directory/
+*******************************************************************************/
 int validateFileName(char commandStr[PARAMS][CMDSTRSIZE]){
   int flag1 = 1;
   if(strcmp(commandStr[1], "-g") == 0){
@@ -135,9 +184,13 @@ int validateFileName(char commandStr[PARAMS][CMDSTRSIZE]){
   return flag1;
 }
 
-//ftp://ftp.cs.umass.edu/pub/net/pub/kurose/ftpserver.c
-//https://beej.us/guide/bgnet/html/multi/advanced.html#sendall
-//https://stackoverflow.com/questions/2029103/correct-way-to-read-a-text-file-into-a-buffer-in-c
+/*******************************************************************************
+* Name: handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE], int new_fd)
+* Desc: Logic for controlling request
+* Args: commands sent from client with requested file name, sockets for dataPort
+* connection and control connection
+* Return: nothing
+*******************************************************************************/
 void handleRequest(int sock_fd, char commandStr[PARAMS][CMDSTRSIZE], int new_fd){
   int numbytes0;
   if(strcmp(commandStr[1], "-l") == 0){
@@ -259,10 +312,7 @@ int main(int argc, char *argv[]) {
     }
     if(strcmp(commandStr[1], "-g") == 0){
       if(validateFileName(commandStr) == 1){
-        //char fileValMsg[] = "FILE NOT FOUND";
         char* fileValMsg = "FILE NOT FOUND";
-        //memset(fileValMsg, '\0', sizeof(fileValMsg));
-        //strcpy(fileValMsg, "FILE NOT FOUND");
         if(nb = send(new_fd, fileValMsg, strlen(fileValMsg), 0) == -1){
           perror("send from validation: ");
           exit(1);
